@@ -1,0 +1,30 @@
+[
+    {
+        "name": "metric",
+        "type": "STRING"
+    },
+    {
+        "name": "metric_id",
+        "type": "STRING"
+    },
+    {
+        "name": "attributed_message",
+        "type": "STRING"
+    },
+    {
+        "name": "date",
+        "type": "TIMESTAMP"
+    },
+    {
+        "name": "measurement",
+        "type": "STRING"
+    },
+    {
+        "name": "values",
+        "type": "FLOAT"
+    },
+    {
+        "name": "_batched_at",
+        "type": "TIMESTAMP"
+    }
+]

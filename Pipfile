@@ -1,0 +1,21 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+requests = "*"
+google-cloud-bigquery = "*"
+jinja2 = "*"
+google-cloud-pubsub = "*"
+
+[dev-packages]
+pytest = "*"
+black = "*"
+functions-framework = "*"
+
+[requires]
+python_version = "3.8"
+
+[pipenv]
+allow_prereleases = true
