@@ -1,11 +1,11 @@
 import json
 import base64
 
-from models import KlaviyoMetric, KlaviyoCampaigns
+from models import Klaviyo
 from broadcast import broadcast
 
 
-def metric_factory(start, end):
+def metric_factory(client_name, private_key, start, end):
     """Factory to create metrics
 
     Args:
@@ -26,7 +26,10 @@ def metric_factory(start, end):
     ]
 
     metrics = [
-        KlaviyoMetric.create(*metric, start=start, end=end) for metric in metrics
+        Klaviyo.factory(
+            client_name, private_key, "metrics", *metric, start=start, end=end
+        )
+        for metric in metrics
     ]
     return metrics
 
@@ -51,24 +54,27 @@ def main(request):
     print(data)
 
     if data:
-        if 'broadcast' in data:
+        if "broadcast" in data:
             results = [broadcast(data)]
         else:
             mode = data.get("mode")
             if mode == "metrics":
                 metric_jobs = metric_factory(
-                    data.get("start"), data.get("end")
+                    data["client_name"],
+                    data["private_key"],
+                    data.get("start"),
+                    data.get("end"),
                 )
-                pipelines = "Klaviyo Metrics"
                 results = [job.run() for job in metric_jobs]
             elif mode == "campaigns":
-                campaigns = KlaviyoCampaigns()
-                pipelines = "Klaviyo Campaigns"
+                campaigns = Klaviyo.factory(
+                    data["client_name"], data["private_key"], mode
+                )
                 results = [campaigns.run()]
             else:
                 raise NotImplementedError
 
-            responses = {"pipelines": pipelines, "results": results}
+            responses = {"pipelines": "Klaviyo", "results": results}
             print(responses)
             return responses
     else:
