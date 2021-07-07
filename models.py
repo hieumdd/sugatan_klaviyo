@@ -60,13 +60,12 @@ class Klaviyo(metaclass=ABCMeta):
                 start,
                 end,
             )
-            if metric == "Placed Order":
+            if metric in ["Unsubscribed", "Placed Order"]:
                 return KlaviyoConversion(*args)
             elif metric in [
                 "Received Email",
                 "Opened Email",
                 "Clicked Email",
-                "Unsubscribed",
             ]:
                 return KlaviyoStandard(*args)
             else:
@@ -332,16 +331,15 @@ class KlaviyoCampaigns(Klaviyo):
         self.table = "_Campaigns"
 
     def _get(self, url):
-        i = 0
         rows = []
         with requests.Session() as session:
             while True:
-                params = {"api_key": self.private_key, "count": 100, "page": i}
+                params = {"api_key": self.private_key, "count": 100, "page": 0}
                 with session.get(url, params=params) as r:
                     res = r.json()
                 if len(res["data"]) > 0:
                     rows.extend(res["data"])
-                    i = i + 1
+                    params["page"] += 1
                 else:
                     break
         return rows

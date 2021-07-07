@@ -12,6 +12,6 @@ def test_metrics_manual():
         "private_key": os.getenv(f"{CLIENT_NAME}_PRIVATE_KEY"),
         "mode": "metrics",
         "start": "2021-06-01",
-        "end": "2021-07-01",
+        "end": "2021-06-30",
     }
     process(data)
