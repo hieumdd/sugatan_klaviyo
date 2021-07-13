@@ -6,7 +6,7 @@ on:
 
 env:
   FUNCTIONS_NAME: Sugatan_Klaviyo
-  TOPIC_ID: shopify
+  TOPIC_ID: klaviyo
   REGION: us-central1
 
 jobs:
