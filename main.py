@@ -74,8 +74,8 @@ def main(request):
             else:
                 raise NotImplementedError
 
-            responses = {"pipelines": "Klaviyo", "results": results}
-            print(responses)
-            return responses
+        responses = {"pipelines": "Klaviyo", "results": results}
+        print(responses)
+        return responses
     else:
         raise NotImplementedError

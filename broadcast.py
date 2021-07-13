@@ -17,7 +17,7 @@ def broadcast(broadcast_data):
     topic_path = publisher.topic_path(os.getenv("PROJECT_ID"), os.getenv("TOPIC_ID"))
     clients = get_clients()
 
-    for client in clients():
+    for client in clients:
         data = {
             "client_name": client["client_name"],
             "private_key": client["private_key"],
