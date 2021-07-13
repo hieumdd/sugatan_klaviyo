@@ -6,6 +6,7 @@ on:
 
 env:
   FUNCTIONS_NAME: Sugatan_Klaviyo
+  TOPIC_ID: shopify
   REGION: us-central1
 
 jobs:
@@ -31,4 +32,4 @@ jobs:
           --trigger-http
           --runtime=python38
           --service-account=${{ secrets.GCP_SA }}
-          --set-env-vars=SBLA_PRIVATE_KEY={{ secrets.SBLA_PRIVATE_KEY }}
+          --set-env-vars=PROJECT_ID=${{ secrets.PROJECT_ID }},TOPIC_ID=${{ env.TOPIC_ID }},SBLA_PRIVATE_KEY=${{ secrets.SBLA_PRIVATE_KEY }}
