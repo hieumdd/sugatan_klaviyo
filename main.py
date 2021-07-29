@@ -18,11 +18,16 @@ def metric_factory(client_name, private_key, start, end):
 
     metrics = [
         ("Received Email", "count"),
+        ("Received Email", "unique"),
         ("Opened Email", "count"),
+        ("Opened Email", "unique"),
         ("Clicked Email", "count"),
+        ("Clicked Email", "unique"),
         ("Placed Order", "count"),
         ("Placed Order", "value"),
+        ("Placed Order", "unique"),
         ("Unsubscribed", "count"),
+        ("Unsubscribed", "unique"),
     ]
 
     metrics = [

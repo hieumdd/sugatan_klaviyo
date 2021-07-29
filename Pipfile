@@ -12,7 +12,6 @@ google-cloud-pubsub = "*"
 [dev-packages]
 pytest = "*"
 black = "*"
-functions-framework = "*"
 
 [requires]
 python_version = "3.8"

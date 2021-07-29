@@ -84,18 +84,18 @@ class Klaviyo(metaclass=ABCMeta):
 
     @abstractmethod
     def _get(self, url):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def _get_endpoint(self):
-        raise NotImplementedError
+        pass
 
     def transform(self, rows):
         return self._transform(rows)
 
     @abstractmethod
     def _transform(self, rows):
-        raise NotImplementedError
+        pass
 
     def load(self, rows):
         """Load to BigQuery
@@ -124,22 +124,22 @@ class Klaviyo(metaclass=ABCMeta):
 
     @abstractmethod
     def _get_table(self):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def _get_schema(self):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def _get_write_disposition(self):
-        raise NotImplementedError
+        pass
 
     def update(self):
         return self._update()
 
     @abstractmethod
     def _update(self):
-        raise NotImplementedError
+        pass
 
     def run(self):
         """Run the job
@@ -327,6 +327,7 @@ class KlaviyoConversion(KlaviyoMetric):
 class KlaviyoCampaigns(Klaviyo):
     def __init__(self, client_name, private_key):
         """Initiate Klaviyo Campaigns Job"""
+
         super().__init__(client_name, private_key)
         self.table = "_Campaigns"
 
