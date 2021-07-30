@@ -334,13 +334,14 @@ class KlaviyoCampaigns(Klaviyo):
     def _get(self, url):
         rows = []
         with requests.Session() as session:
+            params = {"api_key": self.private_key, "count": 100, "page": 0}
             while True:
-                params = {"api_key": self.private_key, "count": 100, "page": 0}
                 with session.get(url, params=params) as r:
                     res = r.json()
                 if len(res["data"]) > 0:
                     rows.extend(res["data"])
                     params["page"] += 1
+                    params
                 else:
                     break
         return rows
