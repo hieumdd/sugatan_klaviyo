@@ -2,7 +2,7 @@ import os
 
 from .utils import process
 
-CLIENT_NAME = "SBLA"
+CLIENT_NAME = "MotivArt"
 PRIVATE_KEY = os.getenv(f"{CLIENT_NAME}_PRIVATE_KEY")
 
 

@@ -1,20 +1,17 @@
 from unittest.mock import Mock
 
-from main import main
-from .utils import encode_data
+from .utils import process_broadcast
+
 
 def test_broadcast_metrics():
-    data = {"broadcast": True, "mode": "metrics"}
-    message = encode_data(data)
-    req = Mock(get_json=Mock(return_value=message), args=message)
-    res = main(req)
-    for i in res['results']:
-        assert i > 0
+    data = {
+        "broadcast": "metrics",
+    }
+    process_broadcast(data)
+
 
 def test_broadcast_campaigns():
-    data = {"broadcast": True, "mode": "campaigns"}
-    message = encode_data(data)
-    req = Mock(get_json=Mock(return_value=message), args=message)
-    res = main(req)
-    for i in res['results']:
-        assert i > 0
+    data = {
+        "broadcast": "campaigns",
+    }
+    process_broadcast(data)

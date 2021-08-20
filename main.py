@@ -6,16 +6,6 @@ from broadcast import broadcast
 
 
 def metric_factory(client_name, private_key, start, end):
-    """Factory to create metrics
-
-    Args:
-        start (str): Date in %Y-%m-%d
-        end (str): Date in %Y-%m-%d
-
-    Returns:
-        list: List of Metrics Instances
-    """
-
     metrics = [
         ("Received Email", "count"),
         ("Received Email", "unique"),
@@ -32,7 +22,12 @@ def metric_factory(client_name, private_key, start, end):
 
     metrics = [
         Klaviyo.factory(
-            client_name, private_key, "metrics", *metric, start=start, end=end
+            client_name,
+            private_key,
+            "metrics",
+            *metric,
+            start=start,
+            end=end,
         )
         for metric in metrics
     ]
@@ -40,18 +35,6 @@ def metric_factory(client_name, private_key, start, end):
 
 
 def main(request):
-    """API Gateway
-
-    Args:
-        request (flask.request): HTTP Request
-
-    Raises:
-        NotImplementedError
-
-    Returns:
-        dict: Responses in JSON
-    """
-
     request_json = request.get_json(silent=True)
     message = request_json["message"]
     data_bytes = message["data"]
@@ -73,13 +56,15 @@ def main(request):
                 results = [job.run() for job in metric_jobs]
             elif mode == "campaigns":
                 campaigns = Klaviyo.factory(
-                    data["client_name"], data["private_key"], mode
+                    data["client_name"],
+                    data["private_key"],
+                    mode,
                 )
                 results = [campaigns.run()]
             else:
                 raise NotImplementedError
 
-        responses = {"pipelines": "Klaviyo", "results": results}
+        responses = {"pipelines": "Klaviyo", "results": results,}
         print(responses)
         return responses
     else:

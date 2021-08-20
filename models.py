@@ -1,4 +1,3 @@
-import os
 import json
 from datetime import datetime
 from abc import abstractmethod, ABCMeta
@@ -7,11 +6,15 @@ import requests
 from google.cloud import bigquery
 import jinja2
 
+NOW = datetime.utcnow()
 
 BASE_URL = "https://a.klaviyo.com/api"
 API_VER = "v1"
 
 BQ_CLIENT = bigquery.Client()
+
+TEMPLATE_LOADER = jinja2.FileSystemLoader(searchpath="./templates")
+TEMPLATE_ENV = jinja2.Environment(loader=TEMPLATE_LOADER)
 
 
 class Klaviyo(metaclass=ABCMeta):
@@ -30,21 +33,6 @@ class Klaviyo(metaclass=ABCMeta):
         start=None,
         end=None,
     ):
-        """Factory method to create Klaviyo Job
-
-        Args:
-            metric (str): Metric Name
-            measurement (str): Corresponding to measurement for API
-            start (str, optional): Date in %Y-%m-%d. Defaults to None.
-            end (str, optional): Date in %Y-%m-%d. Defaults to None.
-
-        Raises:
-            NotImplementedError: When no metric found
-
-        Returns:
-            KlaviyoMetric: Klaviyo Metric Job
-        """
-
         if mode == "campaigns":
             return KlaviyoCampaigns(client_name, private_key)
         if mode == "metrics":
@@ -60,7 +48,10 @@ class Klaviyo(metaclass=ABCMeta):
                 start,
                 end,
             )
-            if metric in ["Unsubscribed", "Placed Order"]:
+            if metric in [
+                "Unsubscribed",
+                "Placed Order",
+            ]:
                 return KlaviyoConversion(*args)
             elif metric in [
                 "Received Email",
@@ -69,166 +60,121 @@ class Klaviyo(metaclass=ABCMeta):
             ]:
                 return KlaviyoStandard(*args)
             else:
-                raise NotImplementedError("Metric not found")
+                raise NotImplementedError(metric)
 
+    @property
+    @abstractmethod
+    def table(self):
+        pass
+
+    @property
+    @abstractmethod
+    def endpoint(self):
+        pass
+
+    @property
+    def url(self):
+        return f"{BASE_URL}/{API_VER}/{self.endpoint}"
+
+    @abstractmethod
     def get(self):
-        """Get the data from API
-
-        Returns:
-            dict: Responses from API
-        """
-
-        endpoint = self._get_endpoint()
-        url = f"{BASE_URL}/{API_VER}/{endpoint}"
-        return self._get(url)
-
-    @abstractmethod
-    def _get(self, url):
         pass
 
     @abstractmethod
-    def _get_endpoint(self):
-        pass
-
     def transform(self, rows):
-        return self._transform(rows)
-
-    @abstractmethod
-    def _transform(self, rows):
-        pass
+        return rows
 
     def load(self, rows):
-        """Load to BigQuery
-
-        Args:
-            rows (list): List of rows in JSON
-
-        Returns:
-            google.cloud.bigquery._AsyncJob: Load Job
-        """
-
-        table = self._get_table()
-        schema = self._get_schema()
-        write_disposition = self._get_write_disposition()
-
-        loads = BQ_CLIENT.load_table_from_json(
+        return BQ_CLIENT.load_table_from_json(
             rows,
-            f"{self.dataset}.{table}",
+            f"{self.dataset}.{self.table}",
             job_config=bigquery.LoadJobConfig(
                 create_disposition="CREATE_IF_NEEDED",
-                write_disposition=write_disposition,
-                schema=schema,
+                write_disposition=self.write_disposition,
+                schema=self.schema,
             ),
         ).result()
-        return loads
 
     @abstractmethod
-    def _get_table(self):
-        pass
-
-    @abstractmethod
-    def _get_schema(self):
-        pass
-
-    @abstractmethod
-    def _get_write_disposition(self):
-        pass
-
     def update(self):
-        return self._update()
-
-    @abstractmethod
-    def _update(self):
         pass
 
     def run(self):
-        """Run the job
-
-        Returns:
-            dict: Job's Results
-        """
-
         rows = self.get()
-        responses = self._get_responses()
+        responses = self.get_responses()
         if len(rows) > 0:
             rows = self.transform(rows)
             loads = self.load(rows)
-            _ = self.update()
+            self.update()
             responses = {
                 **responses,
                 "num_processed": len(rows),
                 "output_rows": loads.output_rows,
-                "errors": loads.errors,
             }
         return responses
 
     @abstractmethod
-    def _get_responses(self, responses):
-        raise NotImplementedError
+    def get_responses(self, responses):
+        pass
 
 
 class KlaviyoMetric(Klaviyo):
     def __init__(
-        self, client_name, private_key, metric, metric_id, measurement, start, end
+        self,
+        client_name,
+        private_key,
+        metric,
+        metric_id,
+        measurement,
+        start,
+        end,
     ):
-        """Initiate Klaviyo Metric
-
-        Args:
-            metric (str): Metric Name
-            metric_id (str): Metric ID/Statistic ID
-            measurement (str): Corresponds to measurement for API
-            start (str): Date in %Y-%m-%d
-            end (str): Date in %Y-%m-%d
-        """
-
         super().__init__(client_name, private_key)
         self.metric = metric
         self.metric_id = metric_id
         self.measurement = measurement
         self.start = start
         self.end = end
-        self.now = datetime.utcnow().isoformat(timespec="seconds")
 
-    def _get(self, url):
+    @property
+    def table(self):
+        return f"_stage_{self.metric}".replace(" ", "")
+
+    @property
+    def endpoint(self):
+        return f"metric/{self.metric_id}/export"
+
+    @property
+    @abstractmethod
+    def params_by(self):
+        pass
+
+    @property
+    def schema(self):
+        with open("schemas/metrics.json", "r") as f:
+            return json.load(f)
+
+    @property
+    def write_disposition(self):
+        return "WRITE_APPEND"
+
+    def get(self):
         params = {
             "api_key": self.private_key,
             "unit": "day",
             "measurement": self.measurement,
-            "by": self._params_by(),
+            "by": self.params_by,
             "count": 10000,
         }
         if self.start and self.end:
             params["start_date"] = self.start
             params["end_date"] = self.end
 
-        with requests.get(url, params=params) as r:
+        with requests.get(self.url, params=params) as r:
             res = r.json()
         return res
 
-    def _get_endpoint(self):
-        return f"metric/{self.metric_id}/export"
-
-    @abstractmethod
-    def _params_by(self):
-        """Abstract Method to get the "by" params for API
-
-        Raises:
-            NotImplementedError: Abstract Method
-        """
-
-        raise NotImplementedError
-
-    def _transform(self, results):
-        """Parse & transform responses from API
-
-        Args:
-            results (dict): Reponses from API
-
-        Returns:
-            list: List of rows in JSON
-        """
-
-        self.table = results["metric"]["name"].replace(" ", "")
+    def transform(self, results):
         segments = results["results"]
         rows = [self._parse_segment(segment) for segment in segments]
         rows = [item for sublist in rows for item in sublist]
@@ -238,22 +184,13 @@ class KlaviyoMetric(Klaviyo):
                 "metric_id": results["metric"]["id"],
                 "measurement": self.measurement,
                 **row,
-                "_batched_at": self.now,
+                "_batched_at": NOW.isoformat(timespec='seconds'),
             }
             for row in rows
         ]
         return rows
 
     def _parse_segment(self, segment):
-        """Parse each rows within segments
-
-        Args:
-            segment (dict): Segments from API responses
-
-        Returns:
-            list: List of rows in JSON
-        """
-
         attributed_message = segment["segment"]
         rows = [
             {
@@ -265,34 +202,25 @@ class KlaviyoMetric(Klaviyo):
         ]
         return rows
 
-    def _get_table(self):
-        return f"_stage_{self.table}"
-
-    def _get_schema(self):
-        with open("schemas/metrics.json", "r") as f:
-            return json.load(f)
-
-    def _get_write_disposition(self):
-        return "WRITE_APPEND"
-
-    def _update(self):
-        """Update the main table using the staging table"""
-
-        loader = jinja2.FileSystemLoader(searchpath="./templates")
-        env = jinja2.Environment(loader=loader)
-
-        template = env.get_template("update_from_stage.sql.j2")
+    def update(self):
+        template = TEMPLATE_ENV.get_template("update_from_stage.sql.j2")
         rendered_query = template.render(
             dataset=self.dataset,
             table=self.table,
             p_key=",".join(
-                ["date", "metric", "metric_id", "attributed_message", "measurement"]
+                [
+                    "date",
+                    "metric",
+                    "metric_id",
+                    "attributed_message",
+                    "measurement",
+                ]
             ),
             incremental_key="_batched_at",
         )
         BQ_CLIENT.query(rendered_query)
 
-    def _get_responses(self):
+    def get_responses(self):
         return {
             "metric": self.metric,
             "start_date": getattr(self, "start", None),
@@ -302,25 +230,53 @@ class KlaviyoMetric(Klaviyo):
 
 class KlaviyoStandard(KlaviyoMetric):
     def __init__(
-        self, client_name, private_key, metric, metric_id, measurement, start, end
+        self,
+        client_name,
+        private_key,
+        metric,
+        metric_id,
+        measurement,
+        start,
+        end,
     ):
         super().__init__(
-            client_name, private_key, metric, metric_id, measurement, start, end
+            client_name,
+            private_key,
+            metric,
+            metric_id,
+            measurement,
+            start,
+            end,
         )
 
-    def _params_by(self):
+    @property
+    def params_by(self):
         return "$message"
 
 
 class KlaviyoConversion(KlaviyoMetric):
     def __init__(
-        self, client_name, private_key, metric, metric_id, measurement, start, end
+        self,
+        client_name,
+        private_key,
+        metric,
+        metric_id,
+        measurement,
+        start,
+        end,
     ):
         super().__init__(
-            client_name, private_key, metric, metric_id, measurement, start, end
+            client_name,
+            private_key,
+            metric,
+            metric_id,
+            measurement,
+            start,
+            end,
         )
 
-    def _params_by(self):
+    @property
+    def params_by(self):
         return "$attributed_message"
 
 
@@ -329,43 +285,49 @@ class KlaviyoCampaigns(Klaviyo):
         """Initiate Klaviyo Campaigns Job"""
 
         super().__init__(client_name, private_key)
-        self.table = "_Campaigns"
 
-    def _get(self, url):
+    @property
+    def table(self):
+        return "_Campaigns"
+
+    @property
+    def endpoint(self):
+        return "campaigns"
+
+    @property
+    def schema(self):
+        with open("schemas/campaigns.json", "r") as f:
+            return json.load(f)
+
+    @property
+    def write_disposition(self):
+        return "WRITE_TRUNCATE"
+
+    def get(self):
         rows = []
         with requests.Session() as session:
-            params = {"api_key": self.private_key, "count": 100, "page": 0}
+            params = {
+                "api_key": self.private_key,
+                "count": 100,
+                "page": 0,
+            }
             while True:
-                with session.get(url, params=params) as r:
+                with session.get(self.url, params=params) as r:
                     res = r.json()
                 if len(res["data"]) > 0:
                     rows.extend(res["data"])
                     params["page"] += 1
-                    params
                 else:
                     break
         return rows
 
-    def _get_endpoint(self):
-        return "campaigns"
-
-    def _transform(self, rows):
+    def transform(self, rows):
         return rows
 
-    def _get_table(self):
-        return self.table
-
-    def _get_schema(self):
-        with open("schemas/campaigns.json", "r") as f:
-            return json.load(f)
-
-    def _get_write_disposition(self):
-        return "WRITE_TRUNCATE"
-
-    def _update(self):
+    def update(self):
         pass
 
-    def _get_responses(self):
+    def get_responses(self):
         return {
             "table": self.table,
         }

@@ -26,3 +26,10 @@ def process(data):
     req = Mock(get_json=Mock(return_value=message), args=message)
     res = main(req)
     assertion(res)
+
+def process_broadcast(data):
+    message = encode_data(data)
+    req = Mock(get_json=Mock(return_value=message), args=message)
+    res = main(req)
+    for i in res["results"]:
+        assert i > 0

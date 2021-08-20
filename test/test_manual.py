@@ -1,11 +1,10 @@
 import os
 
-
 from .utils import process
 
 CLIENT_NAME = "MotivArt"
 START = "2021-08-01"
-END = "2021-08-05"
+END = "2021-08-20"
 PRIVATE_KEY = os.getenv(f"{CLIENT_NAME}_PRIVATE_KEY")
 
 
