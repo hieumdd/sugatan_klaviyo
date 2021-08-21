@@ -206,7 +206,7 @@ class KlaviyoMetric(Klaviyo):
         template = TEMPLATE_ENV.get_template("update_from_stage.sql.j2")
         rendered_query = template.render(
             dataset=self.dataset,
-            table=self.table,
+            table=f"{self.metric}".replace(" ", ""),
             p_key=",".join(
                 [
                     "date",
@@ -216,7 +216,7 @@ class KlaviyoMetric(Klaviyo):
                     "measurement",
                 ]
             ),
-            incremental_key="_batched_at",
+            incre_key="_batched_at",
         )
         BQ_CLIENT.query(rendered_query)
 

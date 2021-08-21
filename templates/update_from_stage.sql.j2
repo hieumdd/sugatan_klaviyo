@@ -11,7 +11,7 @@ FROM
             ROW_NUMBER() over (
                 PARTITION BY {{ p_key }}
                 ORDER BY
-                    {{ incremental_key }} DESC
+                    {{ incre_key }} DESC
             ) AS row_num
         FROM
             `{{ dataset }}._stage_{{ table }}`
