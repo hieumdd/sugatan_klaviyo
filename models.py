@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from abc import ABC, abstractmethod, ABCMeta
+from abc import abstractmethod, ABCMeta
 
 import requests
 from google.cloud import bigquery
@@ -9,7 +9,8 @@ NOW = datetime.utcnow()
 
 API_VER = "v1"
 BASE_URL = f"https://a.klaviyo.com/api/{API_VER}"
-MAX_COUNT = 10000
+METRIC_ROW_COUNT = 10000
+CAMPAIGN_ROW_COUNT = 100
 
 BQ_CLIENT = bigquery.Client()
 
@@ -37,7 +38,7 @@ class Metric(metaclass=ABCMeta):
             "unit": "day",
             "measurement": self.measurement,
             "by": self.params_by,
-            "count": MAX_COUNT,
+            "count": METRIC_ROW_COUNT,
         }
         if start and end:
             params["start_date"] = start
@@ -265,7 +266,7 @@ class KlaviyoCampaigns(Klaviyo):
         def get(session, page=0):
             params = {
                 "api_key": self.private_key,
-                "count": 100,
+                "count": CAMPAIGN_ROW_COUNT,
                 "page": page,
             }
             with session.get(
