@@ -24,7 +24,7 @@ jobs:
 
       - name: Deploy to Cloud Functions
         run: >-
-          gcloud functions deploy ${{ env.FUNCTIONS_NAME }}
+          gcloud functions deploy ${{ env.FUNCTION_NAME }}
           --entry-point=main
           --timeout=530
           --memory=1024MB
