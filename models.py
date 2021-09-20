@@ -130,6 +130,7 @@ class Klaviyo(metaclass=ABCMeta):
     def run(self):
         rows = self._get()
         response = {
+            "client": self.client_name,
             "table": self.table,
             "num_processed": len(rows),
         }
