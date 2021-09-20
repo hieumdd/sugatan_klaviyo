@@ -2,7 +2,7 @@ import json
 import base64
 
 from models import Klaviyo
-from broadcast import broadcast
+from tasks import create_task
 
 
 def main(request):
@@ -13,7 +13,7 @@ def main(request):
     print(data)
 
     if "broadcast" in data:
-        results = [broadcast(data)]
+        response = create_task(data)
     elif "client_name" in data:
         job = Klaviyo.factory(
             data["mode"],

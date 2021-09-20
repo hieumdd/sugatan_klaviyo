@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
 
 env:
-  FUNCTIONS_NAME: Sugatan_Klaviyo
-  TOPIC_ID: klaviyo
+  FUNCTION_NAME: sugatan_klaviyo
   REGION: us-central1
+  QUEUE_ID: klaviyo
 
 jobs:
   setup:
@@ -32,4 +32,4 @@ jobs:
           --trigger-http
           --runtime=python38
           --service-account=${{ secrets.GCP_SA }}
-          --set-env-vars=PROJECT_ID=${{ secrets.PROJECT_ID }},TOPIC_ID=${{ env.TOPIC_ID }},SBLA_PRIVATE_KEY=${{ secrets.SBLA_PRIVATE_KEY }},MotivArt_PRIVATE_KEY=${{ secrets.MotivArt_PRIVATE_KEY }}
+          --set-env-vars=PROJECT_ID=${{ secrets.PROJECT_ID }},REGION=${{ env.REGION }},FUNCTION_NAME=${{ env.FUNCTION_NAME }},QUEUE_ID=${{ env.QUEUE_ID }},GCP_SA=${{ secrets.GCP_SA }}

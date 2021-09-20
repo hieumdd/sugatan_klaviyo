@@ -150,3 +150,4 @@ backup/
 creds/
 backup/
 tmp/
+.env.bak
