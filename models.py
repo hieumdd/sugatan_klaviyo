@@ -8,8 +8,9 @@ import jinja2
 
 NOW = datetime.utcnow()
 
-BASE_URL = "https://a.klaviyo.com/api"
 API_VER = "v1"
+BASE_URL = f"https://a.klaviyo.com/api/{API_VER}"
+MAX_COUNT = 10000
 
 BQ_CLIENT = bigquery.Client()
 
@@ -28,17 +29,16 @@ class Klaviyo(metaclass=ABCMeta):
         client_name,
         private_key,
         mode,
-        metric=None,
-        measurement=None,
-        start=None,
-        end=None,
+        metric,
+        measurement,
+        start,
+        end,
     ):
         if mode == "campaigns":
             return KlaviyoCampaigns(client_name, private_key)
         if mode == "metrics":
             with open(f"configs/{client_name}.json") as f:
-                config = json.load(f)
-            metric_mapper = config["metric_mapper"]
+                metric_mapper = json.load(f)["metric_mapper"]
             args = (
                 client_name,
                 private_key,
@@ -60,7 +60,7 @@ class Klaviyo(metaclass=ABCMeta):
             ]:
                 return KlaviyoStandard(*args)
             else:
-                raise NotImplementedError(metric)
+                raise ValueError(metric)
 
     @property
     @abstractmethod
@@ -74,7 +74,7 @@ class Klaviyo(metaclass=ABCMeta):
 
     @property
     def url(self):
-        return f"{BASE_URL}/{API_VER}/{self.endpoint}"
+        return f"{BASE_URL}/{self.endpoint}"
 
     @abstractmethod
     def get(self):
@@ -119,6 +119,17 @@ class Klaviyo(metaclass=ABCMeta):
 
 
 class KlaviyoMetric(Klaviyo):
+    schema = [
+        {"name": "metric", "type": "STRING"},
+        {"name": "metric_id", "type": "STRING"},
+        {"name": "attributed_message", "type": "STRING"},
+        {"name": "date", "type": "TIMESTAMP"},
+        {"name": "measurement", "type": "STRING"},
+        {"name": "values", "type": "FLOAT"},
+        {"name": "_batched_at", "type": "TIMESTAMP"},
+    ]
+    write_disposition = "WRITE_APPEND"
+
     def __init__(
         self,
         client_name,
@@ -149,22 +160,13 @@ class KlaviyoMetric(Klaviyo):
     def params_by(self):
         pass
 
-    @property
-    def schema(self):
-        with open("schemas/metrics.json", "r") as f:
-            return json.load(f)
-
-    @property
-    def write_disposition(self):
-        return "WRITE_APPEND"
-
     def get(self):
         params = {
             "api_key": self.private_key,
             "unit": "day",
             "measurement": self.measurement,
             "by": self.params_by,
-            "count": 10000,
+            "count": MAX_COUNT,
         }
         if self.start and self.end:
             params["start_date"] = self.start
@@ -175,50 +177,50 @@ class KlaviyoMetric(Klaviyo):
         return res
 
     def transform(self, results):
+        transform_segment = lambda segment: [
+            {
+                "attributed_message": segment["segment"],
+                "date": data["date"],
+                "values": data["values"][0],
+            }
+            for data in segment["data"]
+        ]
         segments = results["results"]
-        rows = [self._parse_segment(segment) for segment in segments]
+        rows = [transform_segment(segment) for segment in segments]
         rows = [item for sublist in rows for item in sublist]
-        rows = [
+        return [
             {
                 "metric": results["metric"]["name"],
                 "metric_id": results["metric"]["id"],
                 "measurement": self.measurement,
                 **row,
-                "_batched_at": NOW.isoformat(timespec='seconds'),
+                "_batched_at": NOW.isoformat(timespec="seconds"),
             }
             for row in rows
         ]
-        return rows
-
-    def _parse_segment(self, segment):
-        attributed_message = segment["segment"]
-        rows = [
-            {
-                "attributed_message": attributed_message,
-                "date": _data["date"],
-                "values": _data["values"][0],
-            }
-            for _data in segment["data"]
-        ]
-        return rows
 
     def update(self):
-        template = TEMPLATE_ENV.get_template("update_from_stage.sql.j2")
-        rendered_query = template.render(
-            dataset=self.dataset,
-            table=f"{self.metric}".replace(" ", ""),
-            p_key=",".join(
-                [
-                    "date",
-                    "metric",
-                    "metric_id",
-                    "attributed_message",
-                    "measurement",
-                ]
-            ),
-            incre_key="_batched_at",
-        )
-        BQ_CLIENT.query(rendered_query)
+        query = f"""
+        CREATE OR REPLACE TABLE {self.dataset}.{self.table} AS
+        SELECT
+            *
+        EXCEPT
+            (row_num)
+        FROM
+            (
+                SELECT
+                    *,
+                    ROW_NUMBER() over (
+                        PARTITION BY date,metric,metric_id,attributed_message,measurement,
+                        ORDER BY _batched_at DESC
+                    ) AS row_num
+                FROM
+                    {self.dataset}._stage_{self.table}
+            )
+        WHERE
+            row_num = 1
+        """
+        BQ_CLIENT.query(query)
 
     def get_responses(self):
         return {
@@ -229,79 +231,67 @@ class KlaviyoMetric(Klaviyo):
 
 
 class KlaviyoStandard(KlaviyoMetric):
-    def __init__(
-        self,
-        client_name,
-        private_key,
-        metric,
-        metric_id,
-        measurement,
-        start,
-        end,
-    ):
-        super().__init__(
-            client_name,
-            private_key,
-            metric,
-            metric_id,
-            measurement,
-            start,
-            end,
-        )
-
-    @property
-    def params_by(self):
-        return "$message"
+    params_by = "$message"
 
 
 class KlaviyoConversion(KlaviyoMetric):
-    def __init__(
-        self,
-        client_name,
-        private_key,
-        metric,
-        metric_id,
-        measurement,
-        start,
-        end,
-    ):
-        super().__init__(
-            client_name,
-            private_key,
-            metric,
-            metric_id,
-            measurement,
-            start,
-            end,
-        )
-
-    @property
-    def params_by(self):
-        return "$attributed_message"
+    params_by = "$attributed_message"
 
 
 class KlaviyoCampaigns(Klaviyo):
-    def __init__(self, client_name, private_key):
-        """Initiate Klaviyo Campaigns Job"""
-
-        super().__init__(client_name, private_key)
-
-    @property
-    def table(self):
-        return "_Campaigns"
-
-    @property
-    def endpoint(self):
-        return "campaigns"
-
-    @property
-    def schema(self):
-        with open("schemas/campaigns.json", "r") as f:
-            return json.load(f)
-
-    @property
-    def write_disposition(self):
-        return "WRITE_TRUNCATE"
+    table = "_Campaigns"
+    endpoint = "campaigns"
+    schema = [
+        {"name": "object", "type": "STRING"},
+        {"name": "id", "type": "STRING"},
+        {"name": "name", "type": "STRING"},
+        {"name": "subject", "type": "STRING"},
+        {"name": "from_email", "type": "STRING"},
+        {"name": "from_name", "type": "STRING"},
+        {
+            "name": "lists",
+            "type": "record",
+            "mode": "repeated",
+            "fields": [
+                {"name": "object", "type": "STRING"},
+                {"name": "id", "type": "STRING"},
+                {"name": "name", "type": "STRING"},
+                {"name": "list_type", "type": "STRING"},
+                {"name": "folder", "type": "STRING"},
+                {"name": "created", "type": "TIMESTAMP"},
+                {"name": "updated", "type": "TIMESTAMP"},
+                {"name": "person_count", "type": "INTEGER"},
+            ],
+        },
+        {
+            "name": "excluded_lists",
+            "type": "record",
+            "mode": "repeated",
+            "fields": [
+                {"name": "object", "type": "STRING"},
+                {"name": "id", "type": "STRING"},
+                {"name": "name", "type": "STRING"},
+                {"name": "list_type", "type": "STRING"},
+                {"name": "folder", "type": "STRING"},
+                {"name": "created", "type": "TIMESTAMP"},
+                {"name": "updated", "type": "TIMESTAMP"},
+                {"name": "person_count", "type": "INTEGER"},
+            ],
+        },
+        {"name": "status", "type": "STRING"},
+        {"name": "status_id", "type": "INTEGER"},
+        {"name": "status_label", "type": "STRING"},
+        {"name": "sent_at", "type": "TIMESTAMP"},
+        {"name": "send_time", "type": "TIMESTAMP"},
+        {"name": "created", "type": "TIMESTAMP"},
+        {"name": "updated", "type": "TIMESTAMP"},
+        {"name": "num_recipients", "type": "INTEGER"},
+        {"name": "campaign_type", "type": "STRING"},
+        {"name": "is_segmented", "type": "BOOLEAN"},
+        {"name": "message_type", "type": "STRING"},
+        {"name": "template_id", "type": "STRING"},
+    ]
+    write_disposition = "WRITE_TRUNCATE"
 
     def get(self):
         rows = []
@@ -320,6 +310,17 @@ class KlaviyoCampaigns(Klaviyo):
                 else:
                     break
         return rows
+
+    def __get(self, session, page=0):
+        params = {
+            "api_key": self.private_key,
+            "count": 100,
+            "page": page,
+        }
+        with session.get(self.url, params=params) as r:
+            res = r.json()
+        if len(res["data"] > 0):
+            return res["data"].extend(self.__get(session, page + 1))
 
     def transform(self, rows):
         return rows
