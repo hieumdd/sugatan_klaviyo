@@ -24,16 +24,42 @@ class Metric(metaclass=ABCMeta):
     def __init__(self, metric, measurement):
         self.metric = metric
         self.measurement = measurement
-        self.metric_id = None
 
     def get(self, client_name, session, private_key, start, end):
-        with open(f"configs/clients.json", "r") as f:
-            clients = json.load(f)['clients']
-        metric_mapper = [i for i in clients if client_name in i][0][client_name]['metrics']
-        self.metric_id = metric_mapper[self.metric]
-        return self._get(session, private_key, start, end)
+        """Get Metrics data
 
-    def _get(self, session, private_key, start, end):
+        Args:
+            client_name (str): Client name
+            session (requests.Session): HTTP session
+            private_key (str): Private key
+            start (str): Date
+            end (str): Date
+
+        Returns:
+            list: List of rows
+        """
+
+        with open(f"configs/clients.json", "r") as f:
+            clients = json.load(f)["clients"]
+        metric_mapper = [i for i in clients if client_name in i][0][client_name][
+            "metrics"
+        ]
+        return self._get(session, private_key, metric_mapper[self.metric], start, end)
+
+    def _get(self, session, private_key, metric_id, start, end):
+        """Get Metrics data
+
+        Args:
+            client_name (str): Client name
+            session (requests.Session): HTTP session
+            private_key (str): Private key
+            start (str): Date
+            end (str): Date
+
+        Returns:
+            list: List of rows
+        """        
+
         params = {
             "api_key": private_key,
             "unit": "day",
@@ -45,13 +71,22 @@ class Metric(metaclass=ABCMeta):
             params["start_date"] = start
             params["end_date"] = end
         with session.get(
-            f"{BASE_URL}/metric/{self.metric_id}/export",
+            f"{BASE_URL}/metric/{metric_id}/export",
             params=params,
         ) as r:
             res = r.json()
         return self._transform(res)
 
     def _transform(self, results):
+        """Transform results
+
+        Args:
+            results (list): List of rows
+
+        Returns:
+            list: List of rows
+        """
+
         transform_segment = lambda segment: [
             {
                 "attributed_message": segment["segment"],
@@ -90,6 +125,22 @@ class Klaviyo(metaclass=ABCMeta):
 
     @staticmethod
     def factory(mode, client_name, private_key, start, end):
+        """Factory method to create jobs
+
+        Args:
+            mode (str): Mode
+            client_name (str): Client name
+            private_key (str): Private key
+            start (str): Date
+            end (str): Date
+
+        Raises:
+            ValueError: On no mode found
+
+        Returns:
+            Klaviyo: Job
+        """
+
         if mode == "metrics":
             return KlaviyoMetric(client_name, private_key, start, end)
         elif mode == "campaigns":
@@ -107,6 +158,15 @@ class Klaviyo(metaclass=ABCMeta):
         pass
 
     def _load(self, rows):
+        """Load to BigQuery
+
+        Args:
+            rows (list): List of rows
+
+        Returns:
+            int: Output rows
+        """
+
         output_rows = (
             BQ_CLIENT.load_table_from_json(
                 rows,
@@ -128,6 +188,12 @@ class Klaviyo(metaclass=ABCMeta):
         pass
 
     def run(self):
+        """Run the job
+
+        Returns:
+            dict: Job response
+        """
+
         rows = self._get()
         response = {
             "client": self.client_name,
@@ -160,6 +226,12 @@ class KlaviyoMetric(Klaviyo):
         self.start, self.end = start, end
 
     def _get(self):
+        """Defines Metrics and get
+
+        Returns:
+            list: List of rows
+        """
+
         metrics = [
             StandardMetric("Received Email", "count"),
             StandardMetric("Received Email", "unique"),
@@ -187,6 +259,8 @@ class KlaviyoMetric(Klaviyo):
         return [i for j in rows for i in j]
 
     def _update(self):
+        """Update the data so the table has the latest version"""
+
         query = f"""
         CREATE OR REPLACE TABLE {self.dataset}.{self.table} AS
         SELECT
@@ -265,6 +339,8 @@ class KlaviyoCampaigns(Klaviyo):
     write_disposition = "WRITE_TRUNCATE"
 
     def _get(self):
+        """Recursive function to get all campaigns"""
+
         def get(session, page=0):
             params = {
                 "api_key": self.private_key,
