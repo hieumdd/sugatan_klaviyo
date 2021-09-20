@@ -278,3 +278,6 @@ class KlaviyoCampaigns(Klaviyo):
 
         with requests.Session() as session:
             return get(session)
+
+    def _update(self):
+        return super()._update()
