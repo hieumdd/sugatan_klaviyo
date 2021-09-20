@@ -1,7 +1,7 @@
 import json
 import base64
 
-from models import Klaviyo, KlaviyoMetric
+from models import Klaviyo
 from broadcast import broadcast
 
 
@@ -12,30 +12,19 @@ def main(request):
     data = json.loads(base64.b64decode(data_bytes).decode("utf-8"))
     print(data)
 
-    if data:
-        if "broadcast" in data:
-            results = [broadcast(data)]
-        else:
-            mode = data.get("mode")
-            if mode == "metrics":
-                job = KlaviyoMetric(
-                    data["client_name"],
-                    data["private_key"],
-                    data.get("start"),
-                    data.get("end"),
-                )
-                response = job.run()
-            elif mode == "campaigns":
-                campaigns = Klaviyo.factory(
-                    data["client_name"],
-                    data["private_key"],
-                    mode,
-                )
-                results = [campaigns.run()]
-            else:
-                raise NotImplementedError
-
-        print(response)
-        return response
+    if "broadcast" in data:
+        results = [broadcast(data)]
+    elif "client_name" in data:
+        job = Klaviyo.factory(
+            data["mode"],
+            data["client_name"],
+            data["private_key"],
+            data.get("start"),
+            data.get("end"),
+        )
+        response = job.run()
     else:
-        raise NotImplementedError
+        raise ValueError(data)
+
+    print(response)
+    return response

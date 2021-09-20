@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod, ABCMeta
 
 import requests
 from google.cloud import bigquery
-import jinja2
 
 NOW = datetime.utcnow()
 
@@ -13,9 +12,6 @@ BASE_URL = f"https://a.klaviyo.com/api/{API_VER}"
 MAX_COUNT = 10000
 
 BQ_CLIENT = bigquery.Client()
-
-TEMPLATE_LOADER = jinja2.FileSystemLoader(searchpath="./templates")
-TEMPLATE_ENV = jinja2.Environment(loader=TEMPLATE_LOADER)
 
 
 class Metric(metaclass=ABCMeta):
@@ -91,7 +87,7 @@ class Klaviyo(metaclass=ABCMeta):
         self.dataset = f"{client_name}_Klaviyo"
 
     @staticmethod
-    def factory(client_name, private_key, mode, start, end):
+    def factory(mode, client_name, private_key, start, end):
         if mode == "metrics":
             return KlaviyoMetric(client_name, private_key, start, end)
         elif mode == "campaigns":
@@ -199,21 +195,20 @@ class KlaviyoMetric(Klaviyo):
                 SELECT
                     *,
                     ROW_NUMBER() over (
-                        PARTITION BY date,metric,metric_id,attributed_message,measurement,
+                        PARTITION BY date, metric, metric_id, attributed_message, measurement
                         ORDER BY _batched_at DESC
                     ) AS row_num
                 FROM
-                    {self.dataset}._stage_{self.table}
+                    {self.dataset}.{self.table}
             )
         WHERE
             row_num = 1
         """
-        BQ_CLIENT.query(query)
+        BQ_CLIENT.query(query).result()
 
 
 class KlaviyoCampaigns(Klaviyo):
     table = "_Campaigns"
-    endpoint = "campaigns"
     schema = [
         {"name": "object", "type": "STRING"},
         {"name": "id", "type": "STRING"},
@@ -266,16 +261,19 @@ class KlaviyoCampaigns(Klaviyo):
     ]
     write_disposition = "WRITE_TRUNCATE"
 
-    def _get(self, session, page=0):
-        params = {
-            "api_key": self.private_key,
-            "count": 100,
-            "page": page,
-        }
-        with session.get(self.url, params=params) as r:
-            res = r.json()
-        if len(res["data"] > 0):
-            return res["data"].extend(self.__get(session, page + 1))
+    def _get(self):
+        def get(session, page=0):
+            params = {
+                "api_key": self.private_key,
+                "count": 100,
+                "page": page,
+            }
+            with session.get(
+                f"{BASE_URL}/campaigns",
+                params=params,
+            ) as r:
+                res = r.json()
+            return res["data"] + get(session, page + 1) if len(res["data"]) > 0 else []
 
-    def _update(self):
-        pass
+        with requests.Session() as session:
+            return get(session)
