@@ -45,8 +45,7 @@ def create_task(tasks_data):
             ),
             "http_request": {
                 "http_method": tasks_v2.HttpMethod.POST,
-                # "url": f"https://{os.getenv('REGION')}-{os.getenv('PROJECT_ID')}.cloudfunctions.net/{os.getenv('FUNCTION_NAME')}",
-                "url": "https://google.com",
+                "url": f"https://{os.getenv('REGION')}-{os.getenv('PROJECT_ID')}.cloudfunctions.net/{os.getenv('FUNCTION_NAME')}",
                 "oidc_token": {
                     "service_account_email": os.getenv("GCP_SA"),
                 },
