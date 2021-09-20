@@ -77,11 +77,11 @@ class Klaviyo(metaclass=ABCMeta):
         return f"{BASE_URL}/{self.endpoint}"
 
     @abstractmethod
-    def get(self):
+    def _get(self):
         pass
 
     @abstractmethod
-    def transform(self, rows):
+    def _transform(self, rows):
         return rows
 
     def load(self, rows):
@@ -96,16 +96,16 @@ class Klaviyo(metaclass=ABCMeta):
         ).result()
 
     @abstractmethod
-    def update(self):
+    def _update(self):
         pass
 
     def run(self):
-        rows = self.get()
+        rows = self._get()
         responses = self.get_responses()
         if len(rows) > 0:
-            rows = self.transform(rows)
+            rows = self._transform(rows)
             loads = self.load(rows)
-            self.update()
+            self._update()
             responses = {
                 **responses,
                 "num_processed": len(rows),
@@ -160,7 +160,7 @@ class KlaviyoMetric(Klaviyo):
     def params_by(self):
         pass
 
-    def get(self):
+    def _get(self):
         params = {
             "api_key": self.private_key,
             "unit": "day",
@@ -176,7 +176,7 @@ class KlaviyoMetric(Klaviyo):
             res = r.json()
         return res
 
-    def transform(self, results):
+    def _transform(self, results):
         transform_segment = lambda segment: [
             {
                 "attributed_message": segment["segment"],
@@ -185,8 +185,7 @@ class KlaviyoMetric(Klaviyo):
             }
             for data in segment["data"]
         ]
-        segments = results["results"]
-        rows = [transform_segment(segment) for segment in segments]
+        rows = [transform_segment(segment) for segment in results["results"]]
         rows = [item for sublist in rows for item in sublist]
         return [
             {
@@ -199,7 +198,7 @@ class KlaviyoMetric(Klaviyo):
             for row in rows
         ]
 
-    def update(self):
+    def _update(self):
         query = f"""
         CREATE OR REPLACE TABLE {self.dataset}.{self.table} AS
         SELECT
@@ -293,7 +292,7 @@ class KlaviyoCampaigns(Klaviyo):
     ]
     write_disposition = "WRITE_TRUNCATE"
 
-    def get(self):
+    def _get(self):
         rows = []
         with requests.Session() as session:
             params = {
@@ -322,10 +321,10 @@ class KlaviyoCampaigns(Klaviyo):
         if len(res["data"] > 0):
             return res["data"].extend(self.__get(session, page + 1))
 
-    def transform(self, rows):
+    def _transform(self, rows):
         return rows
 
-    def update(self):
+    def _update(self):
         pass
 
     def get_responses(self):
