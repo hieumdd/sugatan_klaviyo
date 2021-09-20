@@ -5,7 +5,7 @@ import pytest
 
 from main import main
 
-CLIENT_NAME = "MotivArt"
+CLIENT_NAME = "SBLA"
 START = "2021-08-01"
 END = "2021-09-01"
 

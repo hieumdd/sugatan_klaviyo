@@ -24,16 +24,16 @@ class Metric(metaclass=ABCMeta):
     def __init__(self, metric, measurement):
         self.metric = metric
         self.measurement = measurement
-        self.metric_id = None
 
     def get(self, client_name, session, private_key, start, end):
         with open(f"configs/clients.json", "r") as f:
-            clients = json.load(f)['clients']
-        metric_mapper = [i for i in clients if client_name in i][0][client_name]['metrics']
-        self.metric_id = metric_mapper[self.metric]
-        return self._get(session, private_key, start, end)
+            clients = json.load(f)["clients"]
+        metric_mapper = [i for i in clients if client_name in i][0][client_name][
+            "metrics"
+        ]
+        return self._get(session, private_key, metric_mapper[self.metric], start, end)
 
-    def _get(self, session, private_key, start, end):
+    def _get(self, session, private_key, metric_id, start, end):
         params = {
             "api_key": private_key,
             "unit": "day",
@@ -45,7 +45,7 @@ class Metric(metaclass=ABCMeta):
             params["start_date"] = start
             params["end_date"] = end
         with session.get(
-            f"{BASE_URL}/metric/{self.metric_id}/export",
+            f"{BASE_URL}/metric/{metric_id}/export",
             params=params,
         ) as r:
             res = r.json()
