@@ -3,6 +3,18 @@ from tasks import create_task
 
 
 def main(request):
+    """API Gateway
+
+    Args:
+        request (flask.Request): HTTP request
+
+    Raises:
+        NotImplementedError: On no matching modules
+
+    Returns:
+        dict: HTTP Response
+    """
+        
     data = request.get_json()
     print(data)
 

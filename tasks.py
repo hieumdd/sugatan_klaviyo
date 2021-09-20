@@ -15,6 +15,12 @@ PARENT = TASKS_CLIENT.queue_path(*CLOUD_TASKS_PATH)
 
 
 def get_clients():
+    """Get Clients with Private keys
+
+    Returns:
+        list: List of clients
+    """
+
     with open("configs/clients.json", "r") as f:
         clients = [
             {k: v["secret"]}
@@ -38,6 +44,15 @@ def get_clients():
 
 
 def create_task(tasks_data):
+    """Create tasks on Cloud Tasks
+
+    Args:
+        tasks_data (dict): Tasks request
+
+    Returns:
+        dict: Job response
+    """
+        
     clients = get_clients()
     payloads = [
         {
