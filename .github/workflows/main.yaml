@@ -30,6 +30,6 @@ jobs:
           --memory=1024MB
           --project=${{ secrets.PROJECT_ID }}
           --trigger-http
-          --runtime=python38
+          --runtime=python39
           --service-account=${{ secrets.GCP_SA }}
           --set-env-vars=PROJECT_ID=${{ secrets.PROJECT_ID }},REGION=${{ env.REGION }},FUNCTION_NAME=${{ env.FUNCTION_NAME }},QUEUE_ID=${{ env.QUEUE_ID }},GCP_SA=${{ secrets.GCP_SA }}
