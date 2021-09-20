@@ -27,8 +27,9 @@ class Metric(metaclass=ABCMeta):
         self.metric_id = None
 
     def get(self, client_name, session, private_key, start, end):
-        with open(f"configs/{client_name}.json", "r") as f:
-            metric_mapper = json.load(f)["metric_mapper"]
+        with open(f"configs/clients.json", "r") as f:
+            clients = json.load(f)['clients']
+        metric_mapper = [i for i in clients if client_name in i][0][client_name]['metrics']
         self.metric_id = metric_mapper[self.metric]
         return self._get(session, private_key, start, end)
 

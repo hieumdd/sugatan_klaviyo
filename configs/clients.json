@@ -13,7 +13,9 @@
                     "id": "klaviyo_SBLA_private_key",
                     "version": 1
                 }
-            },
+            }
+        },
+        {
             "MotivArt": {
                 "metrics": {
                     "Received Email": "JGXiF5",

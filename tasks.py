@@ -1,5 +1,6 @@
 import os
 import json
+import uuid
 
 from google.cloud import secretmanager, tasks_v2
 
@@ -32,6 +33,7 @@ def get_clients():
         for client in clients
         for k, v in client.items()
     ]
+    clients_keys
     return clients_keys
 
 
@@ -41,7 +43,7 @@ def create_task(tasks_data):
         {
             "name": TASKS_CLIENT.task_path(
                 *CLOUD_TASKS_PATH,
-                task=client["client_name"],
+                task=f"{client['client_name']}-{uuid.uuid4()}",
             ),
             "http_request": {
                 "http_method": tasks_v2.HttpMethod.POST,

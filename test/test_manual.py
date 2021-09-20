@@ -6,8 +6,8 @@ import pytest
 from main import main
 
 CLIENT_NAME = "MotivArt"
-START = "2021-08-01"
-END = "2021-08-20"
+START = "2021-06-01"
+END = "2021-07-01"
 
 
 @pytest.mark.parametrize(
