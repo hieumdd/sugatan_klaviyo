@@ -6,7 +6,7 @@ def main(request):
     data = request.get_json()
     print(data)
 
-    if "tasks" in data:
+    if "mode" and "client_name" not in data:
         response = create_task(data)
     elif "client_name" in data:
         job = Klaviyo.factory(
