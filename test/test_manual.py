@@ -13,7 +13,7 @@ END = "2021-09-01"
 @pytest.mark.parametrize(
     [
         "client_name",
-        "mode",
+        "tasks",
         "start",
         "end",
     ],
@@ -28,11 +28,11 @@ END = "2021-09-01"
         "campaigns",
     ],
 )
-def test_units(client_name, mode, start, end):
+def test_units(client_name, tasks, start, end):
     data = {
         "client_name": client_name,
         "private_key": os.getenv(f"{client_name}_PRIVATE_KEY"),
-        "mode": mode,
+        "tasks": tasks,
         "start": start,
         "end": end,
     }
@@ -45,7 +45,7 @@ def test_units(client_name, mode, start, end):
 
 @pytest.mark.parametrize(
     [
-        "mode",
+        "tasks",
         "start",
         "end",
     ],
@@ -60,9 +60,9 @@ def test_units(client_name, mode, start, end):
         "campaigns",
     ],
 )
-def test_tasks(mode, start, end):
+def test_tasks(tasks, start, end):
     data = {
-        "tasks": mode,
+        "tasks": tasks,
         "start": start,
         "end": end,
     }

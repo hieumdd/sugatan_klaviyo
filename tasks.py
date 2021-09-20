@@ -39,11 +39,18 @@ def get_clients():
 
 def create_task(tasks_data):
     clients = get_clients()
+    payloads = [
+        {
+            "tasks": tasks_data["tasks"],
+            **client,
+        }
+        for client in clients
+    ]
     tasks = [
         {
             "name": TASKS_CLIENT.task_path(
                 *CLOUD_TASKS_PATH,
-                task=f"{client['client_name']}-{uuid.uuid4()}",
+                task=f"{payload['client_name']}-{uuid.uuid4()}",
             ),
             "http_request": {
                 "http_method": tasks_v2.HttpMethod.POST,
@@ -54,10 +61,10 @@ def create_task(tasks_data):
                 "headers": {
                     "Content-type": "application/json",
                 },
-                "body": json.dumps(client).encode(),
+                "body": json.dumps(payload).encode(),
             },
         }
-        for client in clients
+        for payload in payloads
     ]
     responses = [
         TASKS_CLIENT.create_task(
