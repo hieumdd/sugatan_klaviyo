@@ -161,15 +161,15 @@ class KlaviyoMetric(Klaviyo):
     def _get(self):
         metrics = [
             StandardMetric("Received Email", "count"),
-            # StandardMetric("Received Email", "unique"),
-            # StandardMetric("Opened Email", "count"),
-            # StandardMetric("Opened Email", "unique"),
-            # StandardMetric("Clicked Email", "count"),
-            # StandardMetric("Clicked Email", "unique"),
-            # ConversionMetric("Placed Order", "count"),
-            # ConversionMetric("Placed Order", "value"),
-            # ConversionMetric("Placed Order", "unique"),
-            # ConversionMetric("Unsubscribed", "count"),
+            StandardMetric("Received Email", "unique"),
+            StandardMetric("Opened Email", "count"),
+            StandardMetric("Opened Email", "unique"),
+            StandardMetric("Clicked Email", "count"),
+            StandardMetric("Clicked Email", "unique"),
+            ConversionMetric("Placed Order", "count"),
+            ConversionMetric("Placed Order", "value"),
+            ConversionMetric("Placed Order", "unique"),
+            ConversionMetric("Unsubscribed", "count"),
             ConversionMetric("Unsubscribed", "unique"),
         ]
         with requests.Session() as session:
@@ -210,7 +210,7 @@ class KlaviyoMetric(Klaviyo):
 
 
 class KlaviyoCampaigns(Klaviyo):
-    table = "_Campaigns"
+    table = "Campaigns"
     schema = [
         {"name": "object", "type": "STRING"},
         {"name": "id", "type": "STRING"},
