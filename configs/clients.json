@@ -1,0 +1,32 @@
+{
+    "clients": [
+        {
+            "SBLA": {
+                "metrics": {
+                    "Received Email": "YdMvLn",
+                    "Opened Email": "SduNCi",
+                    "Clicked Email": "TZUG8M",
+                    "Placed Order": "SFufMy",
+                    "Unsubscribed": "WXKqx8"
+                },
+                "secret": {
+                    "id": "klaviyo_SBLA_private_key",
+                    "version": 1
+                }
+            },
+            "MotivArt": {
+                "metrics": {
+                    "Received Email": "JGXiF5",
+                    "Opened Email": "KjYmhG",
+                    "Clicked Email": "JazwpQ",
+                    "Placed Order": "QfvtTi",
+                    "Unsubscribed": "M9HYMj"
+                },
+                "secret": {
+                    "id": "klaviyo_MotivArt_private_key",
+                    "version": 1
+                }
+            }
+        }
+    ]
+}

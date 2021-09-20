@@ -1,18 +1,30 @@
 import os
 import json
-from google.cloud import pubsub_v1
+from google.cloud import pubsub_v1, secretmanager
+
+SECRET_CLIENT = secretmanager.SecretManagerServiceClient()
 
 
 def get_clients():
-    clients = [i.replace(".json", "") for i in os.listdir("configs")]
-    clients = [
+    with open("configs/clients.json", "r") as f:
+        clients = [
+            {k: v["secret"]}
+            for client in json.load(f)["clients"]
+            for k, v in client.items()
+        ]
+    clients_keys = [
         {
-            "client_name": i,
-            "private_key": os.getenv(f"{i}_PRIVATE_KEY"),
+            "client_name": k,
+            "private_key": SECRET_CLIENT.access_secret_version(
+                request={
+                    "name": f"projects/{os.getenv('PROJECT_ID')}/secrets/{v['id']}/versions/{v['version']}",
+                }
+            ).payload.data.decode("UTF-8"),
         }
-        for i in clients
+        for client in clients
+        for k, v in client.items()
     ]
-    return clients
+    return clients_keys
 
 
 def broadcast(broadcast_data):
