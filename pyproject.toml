@@ -8,8 +8,6 @@ authors = ["HM <hieumdd@gmail.com>"]
 python = "~3.9"
 requests = "^2.26.0"
 google-cloud-bigquery = "^2.26.0"
-Jinja2 = "^3.0.1"
-google-cloud-pubsub = "^2.8.0"
 google-cloud-secret-manager = "^2.7.1"
 google-cloud-tasks = "^2.5.1"
 
