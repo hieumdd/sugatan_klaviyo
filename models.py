@@ -89,13 +89,13 @@ class Klaviyo(metaclass=ABCMeta):
         self.dataset = f"{client_name}_Klaviyo"
 
     @staticmethod
-    def factory(tasks, client_name, private_key, start, end):
-        if tasks == "metrics":
+    def factory(mode, client_name, private_key, start, end):
+        if mode == "metrics":
             return KlaviyoMetric(client_name, private_key, start, end)
-        elif tasks == "campaigns":
+        elif mode == "campaigns":
             return KlaviyoCampaigns(client_name, private_key)
         else:
-            raise ValueError(tasks)
+            raise ValueError(mode)
 
     @property
     @abstractmethod

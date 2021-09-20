@@ -41,7 +41,7 @@ def create_task(tasks_data):
     clients = get_clients()
     payloads = [
         {
-            "tasks": tasks_data["tasks"],
+            "mode": tasks_data["mode"],
             **client,
         }
         for client in clients
