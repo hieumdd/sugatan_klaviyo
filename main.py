@@ -1,37 +1,8 @@
 import json
 import base64
 
-from models import Klaviyo
+from models import Klaviyo, KlaviyoMetric
 from broadcast import broadcast
-
-
-def metric_factory(client_name, private_key, start, end):
-    metrics = [
-        ("Received Email", "count"),
-        ("Received Email", "unique"),
-        ("Opened Email", "count"),
-        ("Opened Email", "unique"),
-        ("Clicked Email", "count"),
-        ("Clicked Email", "unique"),
-        ("Placed Order", "count"),
-        ("Placed Order", "value"),
-        ("Placed Order", "unique"),
-        ("Unsubscribed", "count"),
-        ("Unsubscribed", "unique"),
-    ]
-
-    metrics = [
-        Klaviyo.factory(
-            client_name,
-            private_key,
-            "metrics",
-            *metric,
-            start=start,
-            end=end,
-        )
-        for metric in metrics
-    ]
-    return metrics
 
 
 def main(request):
@@ -47,13 +18,13 @@ def main(request):
         else:
             mode = data.get("mode")
             if mode == "metrics":
-                metric_jobs = metric_factory(
+                job = KlaviyoMetric(
                     data["client_name"],
                     data["private_key"],
                     data.get("start"),
                     data.get("end"),
                 )
-                results = [job.run() for job in metric_jobs]
+                response = job.run()
             elif mode == "campaigns":
                 campaigns = Klaviyo.factory(
                     data["client_name"],
@@ -64,8 +35,7 @@ def main(request):
             else:
                 raise NotImplementedError
 
-        responses = {"pipelines": "Klaviyo", "results": results,}
-        print(responses)
-        return responses
+        print(response)
+        return response
     else:
         raise NotImplementedError

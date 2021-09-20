@@ -12,13 +12,9 @@ def encode_data(data):
 
 
 def assertion(res):
-    results = res["results"]
-    for i in results:
-        if i.get("num_processed"):
-            assert i["num_processed"] >= 0
-            if i["num_processed"] > 0:
-                assert i["output_rows"] > 0
-                assert i["num_processed"] == i["output_rows"]
+    assert res["num_processed"] >= 0
+    if res["num_processed"] > 0:
+        assert res["num_processed"] == res["output_rows"]
 
 
 def process(data):
