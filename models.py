@@ -29,10 +29,10 @@ class Klaviyo(metaclass=ABCMeta):
         client_name,
         private_key,
         mode,
-        metric,
-        measurement,
-        start,
-        end,
+        metric=None,
+        measurement=None,
+        start=None,
+        end=None,
     ):
         if mode == "campaigns":
             return KlaviyoCampaigns(client_name, private_key)
